@@ -1,17 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { getSocket } from "@/lib/socket";
+import { useEffect, useState } from "react";
 import { Socket } from "socket.io-client";
 
 type ConnectionStatus = "connected" | "disconnected" | "connecting";
 
-interface UseSocketReturn {
-  socket: Socket | null;
-  status: ConnectionStatus;
-}
-
-export const useSocket = (): UseSocketReturn => {
+export const useSocket = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
 
