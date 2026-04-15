@@ -1,0 +1,28 @@
+{
+  "name": "reactive-chat",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "lint:server": "cd server && bun run lint",
+    "format:server": "cd server && bun run format",
+    "lint:client": "cd client && bun run lint",
+    "format:client": "cd client && bun run format"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
+  },
+  "lint-staged": {
+    "server/src/**/*.ts": [
+      "bunx prettier --write",
+      "bunx eslint --fix"
+    ],
+    "client/src/**/*.{ts,tsx}": [
+      "bunx prettier --write",
+      "bunx eslint --fix"
+    ]
+  }
+}
