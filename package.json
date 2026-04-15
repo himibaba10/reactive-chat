@@ -17,12 +17,12 @@
   },
   "lint-staged": {
     "server/src/**/*.ts": [
-      "bunx prettier --write",
-      "bunx eslint --fix"
+      "bun --cwd server prettier --write",
+      "bun --cwd server eslint --fix"
     ],
     "client/src/**/*.{ts,tsx}": [
-      "bunx prettier --write",
-      "bunx eslint --fix"
+      "bun --cwd client prettier --write",
+      "bun --cwd client eslint --fix"
     ]
   },
   "type": "module"

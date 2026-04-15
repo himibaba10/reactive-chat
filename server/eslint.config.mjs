@@ -20,7 +20,7 @@ export default [
     rules: {
       ...tsPlugin.configs.recommended.rules,
       ...prettierConfig.rules,
-      "prettier/prettier": "error",
+      "prettier/prettier": ["error", { "endOfLine": "auto" }],
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/explicit-function-return-type": "warn",
       "@typescript-eslint/no-explicit-any": "warn",
