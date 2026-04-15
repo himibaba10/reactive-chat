@@ -24,5 +24,6 @@
       "bunx prettier --write",
       "bunx eslint --fix"
     ]
-  }
+  },
+  "type": "module"
 }
