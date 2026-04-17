@@ -1,11 +1,11 @@
 import { Server, Socket } from "socket.io";
+import { Message } from "../models/Message";
 
-// These are the events our app uses — typed so no typos ever
-// This is a shared contract between client and server
 export interface ServerToClientEvents {
   "message:received": (data: MessagePayload) => void;
   "room:joined": (data: { roomId: string; socketId: string }) => void;
   "room:left": (data: { roomId: string; socketId: string }) => void;
+  "history:loaded": (messages: MessagePayload[]) => void; // NEW
 }
 
 export interface ClientToServerEvents {
@@ -22,8 +22,6 @@ export interface MessagePayload {
   timestamp: number;
 }
 
-// This function takes the io instance and registers all socket logic.
-// Keeps index.ts clean — one line call vs 100 lines of socket code.
 export const registerSocketHandlers = (
   io: Server<ClientToServerEvents, ServerToClientEvents>
 ): void => {
@@ -31,39 +29,52 @@ export const registerSocketHandlers = (
     console.log(`Socket connected: ${socket.id}`);
 
     // --- ROOM: JOIN ---
-    // socket.join(roomId) adds this socket to a named room.
-    // After this, any io.to(roomId).emit(...) reaches this socket.
-    socket.on("room:join", (roomId) => {
+    socket.on("room:join", async (roomId) => {
       socket.join(roomId);
       console.log(`${socket.id} joined room: ${roomId}`);
 
-      // Notify EVERYONE in the room (including the joiner)
       io.to(roomId).emit("room:joined", { roomId, socketId: socket.id });
+
+      // Load last 50 messages for this room from DB
+      // KEY: emit ONLY to socket.id — not the whole room.
+      // Other members already have history. Only the joiner needs it.
+      try {
+        const history = await Message.find({ roomId })
+          .sort({ timestamp: 1 }) // oldest first
+          .limit(50)
+          .lean(); // .lean() returns plain JS objects, not Mongoose docs — faster
+
+        socket.emit("history:loaded", history as MessagePayload[]);
+      } catch (err) {
+        console.error("Failed to load history:", err);
+      }
     });
 
     // --- ROOM: LEAVE ---
     socket.on("room:leave", (roomId) => {
       socket.leave(roomId);
       console.log(`${socket.id} left room: ${roomId}`);
-
-      // Notify everyone still in the room (NOT the leaver — they've left)
       socket.to(roomId).emit("room:left", { roomId, socketId: socket.id });
     });
 
     // --- MESSAGE: SEND ---
-    socket.on("message:send", (data) => {
+    socket.on("message:send", async (data) => {
       console.log(`Message in room ${data.roomId} from ${data.senderName}: ${data.message}`);
 
-      // KEY: socket.to(roomId) broadcasts to everyone in the room EXCEPT the sender.
-      // Use io.to(roomId) if you also want the sender to receive it.
+      // 1. Broadcast to room (excluding sender — sender already has it via optimistic update)
       socket.to(data.roomId).emit("message:received", data);
+
+      // 2. Persist to MongoDB — fire and forget pattern.
+      // We don't await this before broadcasting — that would slow down real-time delivery.
+      // Message reaches other users instantly, DB write happens in background.
+      Message.create(data).catch((err) => {
+        console.error("Failed to save message:", err);
+      });
     });
 
     // --- DISCONNECT ---
     socket.on("disconnect", (reason) => {
       console.log(`Socket disconnected: ${socket.id} — reason: ${reason}`);
-      // NOTE: Socket.IO auto-removes the socket from all rooms on disconnect.
-      // You don't need to manually call socket.leave() here.
     });
   });
 };

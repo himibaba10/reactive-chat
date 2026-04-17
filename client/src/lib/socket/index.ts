@@ -1,14 +1,12 @@
 import { io, Socket } from "socket.io-client";
 
-// Mirroring server event types on the client
-// Client SENDS these → ServerToClientEvents on server
 export interface ServerToClientEvents {
   "message:received": (data: MessagePayload) => void;
   "room:joined": (data: { roomId: string; socketId: string }) => void;
   "room:left": (data: { roomId: string; socketId: string }) => void;
+  "history:loaded": (messages: MessagePayload[]) => void; // NEW
 }
 
-// Client LISTENS to these ← ClientToServerEvents on server
 export interface ClientToServerEvents {
   "room:join": (roomId: string) => void;
   "room:leave": (roomId: string) => void;

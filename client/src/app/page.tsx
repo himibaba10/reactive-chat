@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSocket } from "@/hooks/useSocket";
 import { useRoom } from "@/hooks/useRoom";
 
 export default function Home() {
   const { status } = useSocket();
-  const { messages, joinRoom, leaveRoom, sendMessage, currentRoom } = useRoom();
+  const { messages, joinRoom, leaveRoom, sendMessage, currentRoom, isLoadingHistory } = useRoom();
 
   const [roomInput, setRoomInput] = useState("");
   const [msgInput, setMsgInput] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleJoin = (): void => {
     if (!roomInput.trim()) return;
@@ -30,7 +36,7 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-      {/* Connection Status */}
+      {/* Connection status */}
       <div className="flex items-center gap-2">
         <span
           className={`h-3 w-3 rounded-full ${
@@ -44,7 +50,7 @@ export default function Home() {
         <span className="text-sm text-gray-500 capitalize">{status}</span>
       </div>
 
-      {/* Room Controls */}
+      {/* Room controls */}
       {!currentRoom ? (
         <div className="flex gap-2">
           <input
@@ -69,23 +75,31 @@ export default function Home() {
         </div>
       )}
 
-      {/* Messages */}
+      {/* Chat window */}
       {currentRoom && (
         <div className="w-full max-w-md flex flex-col gap-4">
           <div className="border rounded h-64 overflow-y-auto p-3 flex flex-col gap-2 bg-gray-50">
-            {messages.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center mt-auto">No messages yet</p>
+            {isLoadingHistory ? (
+              <p className="text-xs text-gray-400 text-center m-auto">Loading history...</p>
+            ) : messages.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center m-auto">No messages yet</p>
             ) : (
-              messages.map((m, i) => (
-                <div key={i} className="text-sm">
-                  <span className="font-medium">{m.senderName}: </span>
-                  <span>{m.message}</span>
-                </div>
-              ))
+              <>
+                {messages.map((m, i) => (
+                  <div key={i} className="text-sm">
+                    <span className="font-medium">{m.senderName}: </span>
+                    <span>{m.message}</span>
+                    <span className="text-xs text-gray-400 ml-2">
+                      {new Date(m.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                ))}
+                <div ref={bottomRef} />
+              </>
             )}
           </div>
 
-          {/* Input */}
+          {/* Message input */}
           <div className="flex gap-2">
             <input
               className="border rounded px-3 py-1 text-sm flex-1"
