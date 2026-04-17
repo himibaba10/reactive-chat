@@ -5,11 +5,12 @@ import morgan from "morgan";
 import { Server } from "socket.io";
 import { config } from "./config";
 import connectDB from "./config/db";
+import { registerSocketHandlers, ClientToServerEvents, ServerToClientEvents } from "./socket";
 
 const app = express();
 const httpServer = createServer(app);
 
-export const io = new Server(httpServer, {
+export const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
   cors: {
     origin: "http://localhost:3000",
     methods: ["GET", "POST"],
@@ -24,17 +25,10 @@ app.get("/", (_req, res) => {
   res.json({ message: "Server is running" });
 });
 
-// Socket.IO connection lifecycle
-io.on("connection", (socket) => {
-  console.log(`Socket connected: ${socket.id}`);
-
-  socket.on("disconnect", (reason) => {
-    console.log(`Socket disconnected: ${socket.id} — reason: ${reason}`);
-  });
-});
+// All socket logic lives in socket/index.ts — not here
+registerSocketHandlers(io);
 
 connectDB().then(() => {
-  // Listen on httpServer, NOT app — this is important
   httpServer.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`);
   });
