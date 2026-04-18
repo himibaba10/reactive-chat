@@ -4,8 +4,16 @@ import { useAuth } from "@/context/AuthContext";
 import { getSocket, MessagePayload } from "@/lib/socket";
 import { useCallback, useEffect, useState } from "react";
 
+// Message status — for delivery ticks (pending → delivered / failed)
+export type MessageStatus = "pending" | "delivered" | "failed";
+
+export interface TrackedMessage extends MessagePayload {
+  status: MessageStatus;
+  localId: string; // temp ID to match optimistic msg with ack response
+}
+
 interface UseRoomReturn {
-  messages: MessagePayload[];
+  messages: TrackedMessage[];
   joinRoom: (roomId: string) => void;
   leaveRoom: (roomId: string) => void;
   sendMessage: (roomId: string, message: string) => void;
@@ -15,7 +23,7 @@ interface UseRoomReturn {
 }
 
 export const useRoom = (): UseRoomReturn => {
-  const [messages, setMessages] = useState<MessagePayload[]>([]);
+  const [messages, setMessages] = useState<TrackedMessage[]>([]);
   const [currentRoom, setCurrentRoom] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -25,7 +33,8 @@ export const useRoom = (): UseRoomReturn => {
     const socket = getSocket();
 
     const onMessageReceived = (data: MessagePayload): void => {
-      setMessages((prev) => [...prev, data]);
+      // Incoming messages from others are always "delivered" — we received them
+      setMessages((prev) => [...prev, { ...data, status: "delivered", localId: "" }]);
     };
     const onRoomJoined = (data: { roomId: string; name: string }): void => {
       console.log(`${data.name} joined room: ${data.roomId}`);
@@ -34,11 +43,11 @@ export const useRoom = (): UseRoomReturn => {
       console.log(`${data.name} left room: ${data.roomId}`);
     };
     const onHistoryLoaded = (history: MessagePayload[]): void => {
-      setMessages(history);
+      // History messages are already persisted — mark as delivered
+      setMessages(history.map((m) => ({ ...m, status: "delivered", localId: "" })));
       setIsLoadingHistory(false);
       setHistoryError(null);
     };
-
     const onHistoryError = (errMsg: string): void => {
       setHistoryError(errMsg);
       setMessages([]);
@@ -80,17 +89,29 @@ export const useRoom = (): UseRoomReturn => {
   const sendMessage = useCallback(
     (roomId: string, message: string): void => {
       const socket = getSocket();
-      // Optimistic update — build payload locally using auth context user
-      const optimistic: MessagePayload = {
+      const localId = `${Date.now()}-${Math.random()}`;
+
+      // Optimistic update — add as "pending" immediately
+      const optimistic: TrackedMessage = {
         roomId,
         message,
         senderId: user?.id ?? "",
         senderName: user?.name ?? "You",
         timestamp: Date.now(),
+        status: "pending",
+        localId,
       };
       setMessages((prev) => [...prev, optimistic]);
-      // Only send roomId + message — server builds the rest from verified token
-      socket.emit("message:send", { roomId, message });
+
+      // Emit with acknowledgement callback
+      // Server calls ack({ ok: true }) or ack({ ok: false, error: "..." })
+      socket.emit("message:send", { roomId, message }, (ack) => {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.localId === localId ? { ...m, status: ack.ok ? "delivered" : "failed" } : m
+          )
+        );
+      });
     },
     [user]
   );

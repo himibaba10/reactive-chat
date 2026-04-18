@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRoom } from "@/hooks/useRoom";
 import { useSocket } from "@/hooks/useSocket";
 import { useTyping } from "@/hooks/useTyping";
+import { usePresence } from "@/hooks/usePresence";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -27,6 +28,7 @@ export default function Home() {
     historyError,
   } = useRoom();
   const { typingUsers, onTyping } = useTyping();
+  const { onlineUsers } = usePresence(currentRoom);
 
   useEffect(() => {
     if (!isAuthenticated) router.push("/login");
@@ -42,7 +44,6 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
       <Header userName={user?.name} logout={logout} status={status} />
-
       <RoomControls currentRoom={currentRoom} onJoin={joinRoom} onLeave={leaveRoom} />
 
       {currentRoom && (
@@ -52,10 +53,9 @@ export default function Home() {
             isLoadingHistory={isLoadingHistory}
             historyError={historyError}
             currentUserId={user?.id ?? null}
+            onlineUsers={onlineUsers}
           />
-
           <TypingIndicator typingUsers={typingUsers} />
-
           <MessageInput currentRoom={currentRoom} onSend={handleSend} onTyping={onTyping} />
         </div>
       )}

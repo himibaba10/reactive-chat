@@ -3,7 +3,9 @@ import express from "express";
 import { createServer } from "http";
 import morgan from "morgan";
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 import { config } from "./config";
+import { pubClient, subClient, connectRedis } from "./config/redis";
 import connectDB from "./config/db";
 import authRoutes from "./routes/auth.routes";
 import { socketAuthMiddleware } from "./middleware/socketAuth";
@@ -29,14 +31,22 @@ app.get("/", (_req, res) => {
 
 app.use("/auth", authRoutes);
 
-// Auth middleware runs BEFORE any connection event
-// Unauthenticated sockets never reach registerSocketHandlers
 io.use(socketAuthMiddleware);
-
 registerSocketHandlers(io);
 
-connectDB().then(() => {
+const bootstrap = async (): Promise<void> => {
+  // Try Redis — attach adapter only if available
+  const redisConnected = await connectRedis();
+  if (redisConnected) {
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log("Socket.IO using Redis adapter");
+  }
+
+  await connectDB();
+
   httpServer.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`);
   });
-});
+};
+
+bootstrap();
