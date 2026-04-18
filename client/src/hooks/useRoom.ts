@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { getSocket, MessagePayload } from "@/lib/socket";
+import { useCallback, useEffect, useState } from "react";
 
 interface UseRoomReturn {
   messages: MessagePayload[];
@@ -32,7 +32,6 @@ export const useRoom = (): UseRoomReturn => {
       console.log(`${data.socketId} left room: ${data.roomId}`);
     };
 
-    // History arrives once after joining — replace messages, don't append
     const onHistoryLoaded = (history: MessagePayload[]): void => {
       setMessages(history);
       setIsLoadingHistory(false);
@@ -54,7 +53,7 @@ export const useRoom = (): UseRoomReturn => {
   const joinRoom = useCallback((roomId: string): void => {
     const socket = getSocket();
     setMessages([]);
-    setIsLoadingHistory(true); // show loading while history comes in
+    setIsLoadingHistory(true);
     socket.emit("room:join", roomId);
     setCurrentRoom(roomId);
   }, []);
@@ -68,7 +67,6 @@ export const useRoom = (): UseRoomReturn => {
 
   const sendMessage = useCallback((data: MessagePayload): void => {
     const socket = getSocket();
-    // Optimistic update — add locally before server confirms
     setMessages((prev) => [...prev, data]);
     socket.emit("message:send", data);
   }, []);

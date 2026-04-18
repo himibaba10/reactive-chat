@@ -5,7 +5,7 @@ import morgan from "morgan";
 import { Server } from "socket.io";
 import { config } from "./config";
 import connectDB from "./config/db";
-import { registerSocketHandlers, ClientToServerEvents, ServerToClientEvents } from "./socket";
+import { ClientToServerEvents, registerSocketHandlers, ServerToClientEvents } from "./socket";
 
 const app = express();
 const httpServer = createServer(app);
@@ -25,7 +25,6 @@ app.get("/", (_req, res) => {
   res.json({ message: "Server is running" });
 });
 
-// All socket logic lives in socket/index.ts — not here
 registerSocketHandlers(io);
 
 connectDB().then(() => {

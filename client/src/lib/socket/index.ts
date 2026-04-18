@@ -4,7 +4,7 @@ export interface ServerToClientEvents {
   "message:received": (data: MessagePayload) => void;
   "room:joined": (data: { roomId: string; socketId: string }) => void;
   "room:left": (data: { roomId: string; socketId: string }) => void;
-  "history:loaded": (messages: MessagePayload[]) => void; // NEW
+  "history:loaded": (messages: MessagePayload[]) => void;
 }
 
 export interface ClientToServerEvents {

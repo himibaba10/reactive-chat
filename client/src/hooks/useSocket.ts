@@ -1,7 +1,7 @@
 "use client";
 
+import { AppSocket, getSocket } from "@/lib/socket";
 import { useEffect, useState } from "react";
-import { getSocket, AppSocket } from "@/lib/socket";
 
 type ConnectionStatus = "connected" | "disconnected" | "connecting";
 

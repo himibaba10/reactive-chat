@@ -5,7 +5,7 @@ export interface ServerToClientEvents {
   "message:received": (data: MessagePayload) => void;
   "room:joined": (data: { roomId: string; socketId: string }) => void;
   "room:left": (data: { roomId: string; socketId: string }) => void;
-  "history:loaded": (messages: MessagePayload[]) => void; // NEW
+  "history:loaded": (messages: MessagePayload[]) => void;
 }
 
 export interface ClientToServerEvents {
@@ -36,17 +36,13 @@ export const registerSocketHandlers = (
       io.to(roomId).emit("room:joined", { roomId, socketId: socket.id });
 
       // Load last 50 messages for this room from DB
-      // KEY: emit ONLY to socket.id — not the whole room.
-      // Other members already have history. Only the joiner needs it.
       try {
-        const history = await Message.find({ roomId })
-          .sort({ timestamp: 1 }) // oldest first
-          .limit(50)
-          .lean(); // .lean() returns plain JS objects, not Mongoose docs — faster
+        const history = await Message.find({ roomId }).sort({ timestamp: 1 }).limit(50).lean();
 
         socket.emit("history:loaded", history as MessagePayload[]);
       } catch (err) {
         console.error("Failed to load history:", err);
+        socket.emit("history:loaded", []);
       }
     });
 
