@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useSocket } from "@/hooks/useSocket";
 import { useRoom } from "@/hooks/useRoom";
+import { useSocket } from "@/hooks/useSocket";
 import { useTyping } from "@/hooks/useTyping";
+import { useEffect, useRef, useState } from "react";
 
 export default function Home() {
   const { status } = useSocket();

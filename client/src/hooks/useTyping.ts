@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
 import { getSocket, TypingPayload } from "@/lib/socket";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseTypingReturn {
   typingUsers: string[]; // names of users currently typing (excluding you)
@@ -69,6 +69,8 @@ export const useTyping = (): UseTypingReturn => {
 
   // Derive display list from the map
   const typingUsers = Object.values(typingMap);
+
+  console.log(typingMap);
 
   return { typingUsers, onTyping };
 };
