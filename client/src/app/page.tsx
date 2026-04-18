@@ -1,11 +1,15 @@
 "use client";
 
-import { useRoom } from "@/hooks/useRoom";
+import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { useSocket } from "@/hooks/useSocket";
+import { useRoom } from "@/hooks/useRoom";
 import { useTyping } from "@/hooks/useTyping";
-import { useEffect, useRef, useState } from "react";
 
 export default function Home() {
+  const { isAuthenticated, user, logout } = useAuth();
+  const router = useRouter();
   const { status } = useSocket();
   const { messages, joinRoom, leaveRoom, sendMessage, currentRoom, isLoadingHistory } = useRoom();
   const { typingUsers, onTyping } = useTyping();
@@ -14,9 +18,16 @@ export default function Home() {
   const [msgInput, setMsgInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) router.push("/login");
+  }, [isAuthenticated, router]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  if (!isAuthenticated) return null;
 
   const handleJoin = (): void => {
     if (!roomInput.trim()) return;
@@ -25,24 +36,15 @@ export default function Home() {
 
   const handleSend = (): void => {
     if (!msgInput.trim() || !currentRoom) return;
-    sendMessage({
-      roomId: currentRoom,
-      message: msgInput.trim(),
-      senderId: "test-user",
-      senderName: "You",
-      timestamp: Date.now(),
-    });
+    sendMessage(currentRoom, msgInput.trim());
     setMsgInput("");
   };
 
   const handleMsgInput = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setMsgInput(e.target.value);
-    if (currentRoom) {
-      onTyping(currentRoom, "test-user", "You");
-    }
+    if (currentRoom) onTyping(currentRoom);
   };
 
-  // Build typing indicator text: "Alice is typing...", "Alice and Bob are typing..."
   const typingText =
     typingUsers.length === 0
       ? null
@@ -52,18 +54,24 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-      {/* Connection status */}
-      <div className="flex items-center gap-2">
-        <span
-          className={`h-3 w-3 rounded-full ${
-            status === "connected"
-              ? "bg-green-500"
-              : status === "connecting"
-                ? "bg-yellow-500 animate-pulse"
-                : "bg-red-500"
-          }`}
-        />
-        <span className="text-sm text-gray-500 capitalize">{status}</span>
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <span className="text-sm font-medium">Hey, {user?.name}</span>
+        <button className="text-xs text-gray-400 underline" onClick={logout}>
+          Logout
+        </button>
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${
+              status === "connected"
+                ? "bg-green-500"
+                : status === "connecting"
+                  ? "bg-yellow-500 animate-pulse"
+                  : "bg-red-500"
+            }`}
+          />
+          <span className="text-xs text-gray-400 capitalize">{status}</span>
+        </div>
       </div>
 
       {/* Room controls */}
@@ -102,8 +110,10 @@ export default function Home() {
             ) : (
               <>
                 {messages.map((m, i) => (
-                  <div key={i} className="text-sm">
-                    <span className="font-medium">{m.senderName}: </span>
+                  <div key={i} className={`text-sm ${m.senderId === user?.id ? "text-right" : ""}`}>
+                    {m.senderId !== user?.id && (
+                      <span className="font-medium">{m.senderName}: </span>
+                    )}
                     <span>{m.message}</span>
                     <span className="text-xs text-gray-400 ml-2">
                       {new Date(m.timestamp).toLocaleTimeString()}
@@ -115,14 +125,12 @@ export default function Home() {
             )}
           </div>
 
-          {/* Typing indicator — fixed height so UI doesn't jump */}
           <div className="h-4">
             {typingText && (
               <p className="text-xs text-gray-400 italic animate-pulse">{typingText}</p>
             )}
           </div>
 
-          {/* Message input */}
           <div className="flex gap-2">
             <input
               className="border rounded px-3 py-1 text-sm flex-1"

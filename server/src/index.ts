@@ -5,7 +5,9 @@ import morgan from "morgan";
 import { Server } from "socket.io";
 import { config } from "./config";
 import connectDB from "./config/db";
-import { ClientToServerEvents, registerSocketHandlers, ServerToClientEvents } from "./socket";
+import authRoutes from "./routes/auth.routes";
+import { socketAuthMiddleware } from "./middleware/socketAuth";
+import { registerSocketHandlers, ClientToServerEvents, ServerToClientEvents } from "./socket";
 
 const app = express();
 const httpServer = createServer(app);
@@ -24,6 +26,12 @@ app.use(morgan("dev"));
 app.get("/", (_req, res) => {
   res.json({ message: "Server is running" });
 });
+
+app.use("/auth", authRoutes);
+
+// Auth middleware runs BEFORE any connection event
+// Unauthenticated sockets never reach registerSocketHandlers
+io.use(socketAuthMiddleware);
 
 registerSocketHandlers(io);
 

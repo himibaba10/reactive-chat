@@ -1,23 +1,18 @@
 "use client";
 
+import { useEffect, useRef, useState, useCallback } from "react";
 import { getSocket, TypingPayload } from "@/lib/socket";
-import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseTypingReturn {
-  typingUsers: string[]; // names of users currently typing (excluding you)
-  onTyping: (roomId: string, senderId: string, senderName: string) => void;
+  typingUsers: string[];
+  onTyping: (roomId: string) => void;
 }
 
-const TYPING_STOP_DELAY = 1500; // ms of inactivity before we emit typing:stop
+const TYPING_STOP_DELAY = 1500;
 
 export const useTyping = (): UseTypingReturn => {
-  // Map of senderId -> senderName for users currently typing
   const [typingMap, setTypingMap] = useState<Record<string, string>>({});
-
-  // Track whether WE are currently typing (so we don't spam typing:start)
   const isTypingRef = useRef(false);
-
-  // Timer ref — cleared and reset on every keystroke
   const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -27,10 +22,8 @@ export const useTyping = (): UseTypingReturn => {
       setTypingMap((prev) => {
         const updated = { ...prev };
         if (data.isTyping) {
-          // Add to typing map
           updated[data.senderId] = data.senderName;
         } else {
-          // Remove from typing map
           delete updated[data.senderId];
         }
         return updated;
@@ -38,39 +31,27 @@ export const useTyping = (): UseTypingReturn => {
     };
 
     socket.on("typing:update", onTypingUpdate);
-
     return () => {
       socket.off("typing:update", onTypingUpdate);
     };
   }, []);
 
-  // Call this on every input onChange
-  const onTyping = useCallback((roomId: string, senderId: string, senderName: string): void => {
+  // Client just sends roomId — server knows who is typing from the verified token
+  const onTyping = useCallback((roomId: string): void => {
     const socket = getSocket();
 
-    // Only emit typing:start if we weren't already typing
-    // This is the KEY optimization — one event at the START, not one per keypress
     if (!isTypingRef.current) {
       isTypingRef.current = true;
-      socket.emit("typing:start", { roomId, senderId, senderName, isTyping: true });
+      socket.emit("typing:start", roomId);
     }
 
-    // Clear the previous stop timer and start a new one
-    // This resets the countdown on every keystroke
-    if (stopTimerRef.current) {
-      clearTimeout(stopTimerRef.current);
-    }
+    if (stopTimerRef.current) clearTimeout(stopTimerRef.current);
 
     stopTimerRef.current = setTimeout(() => {
       isTypingRef.current = false;
-      socket.emit("typing:stop", { roomId, senderId, senderName, isTyping: false });
+      socket.emit("typing:stop", roomId);
     }, TYPING_STOP_DELAY);
   }, []);
 
-  // Derive display list from the map
-  const typingUsers = Object.values(typingMap);
-
-  console.log(typingMap);
-
-  return { typingUsers, onTyping };
+  return { typingUsers: Object.values(typingMap), onTyping };
 };

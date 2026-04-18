@@ -1,13 +1,14 @@
 "use client";
 
+import { useEffect, useState, useCallback } from "react";
 import { getSocket, MessagePayload } from "@/lib/socket";
-import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 interface UseRoomReturn {
   messages: MessagePayload[];
   joinRoom: (roomId: string) => void;
   leaveRoom: (roomId: string) => void;
-  sendMessage: (data: MessagePayload) => void;
+  sendMessage: (roomId: string, message: string) => void;
   currentRoom: string | null;
   isLoadingHistory: boolean;
 }
@@ -16,6 +17,7 @@ export const useRoom = (): UseRoomReturn => {
   const [messages, setMessages] = useState<MessagePayload[]>([]);
   const [currentRoom, setCurrentRoom] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const socket = getSocket();
@@ -23,15 +25,12 @@ export const useRoom = (): UseRoomReturn => {
     const onMessageReceived = (data: MessagePayload): void => {
       setMessages((prev) => [...prev, data]);
     };
-
-    const onRoomJoined = (data: { roomId: string; socketId: string }): void => {
-      console.log(`${data.socketId} joined room: ${data.roomId}`);
+    const onRoomJoined = (data: { roomId: string; name: string }): void => {
+      console.log(`${data.name} joined room: ${data.roomId}`);
     };
-
-    const onRoomLeft = (data: { roomId: string; socketId: string }): void => {
-      console.log(`${data.socketId} left room: ${data.roomId}`);
+    const onRoomLeft = (data: { roomId: string; name: string }): void => {
+      console.log(`${data.name} left room: ${data.roomId}`);
     };
-
     const onHistoryLoaded = (history: MessagePayload[]): void => {
       setMessages(history);
       setIsLoadingHistory(false);
@@ -65,11 +64,23 @@ export const useRoom = (): UseRoomReturn => {
     setMessages([]);
   }, []);
 
-  const sendMessage = useCallback((data: MessagePayload): void => {
-    const socket = getSocket();
-    setMessages((prev) => [...prev, data]);
-    socket.emit("message:send", data);
-  }, []);
+  const sendMessage = useCallback(
+    (roomId: string, message: string): void => {
+      const socket = getSocket();
+      // Optimistic update — build payload locally using auth context user
+      const optimistic: MessagePayload = {
+        roomId,
+        message,
+        senderId: user?.id ?? "",
+        senderName: user?.name ?? "You",
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, optimistic]);
+      // Only send roomId + message — server builds the rest from verified token
+      socket.emit("message:send", { roomId, message });
+    },
+    [user]
+  );
 
   return { messages, joinRoom, leaveRoom, sendMessage, currentRoom, isLoadingHistory };
 };

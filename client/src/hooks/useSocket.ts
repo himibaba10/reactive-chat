@@ -1,7 +1,8 @@
 "use client";
 
-import { AppSocket, getSocket } from "@/lib/socket";
 import { useEffect, useState } from "react";
+import { getSocket, resetSocket, AppSocket } from "@/lib/socket";
+import { useAuth } from "@/context/AuthContext";
 
 type ConnectionStatus = "connected" | "disconnected" | "connecting";
 
@@ -13,8 +14,14 @@ interface UseSocketReturn {
 export const useSocket = (): UseSocketReturn => {
   const [socket, setSocket] = useState<AppSocket | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
+  const { isAuthenticated, token } = useAuth();
 
   useEffect(() => {
+    // Don't connect until user is authenticated
+    if (!isAuthenticated || !token) return;
+
+    // Recreate socket with the fresh token after login
+    resetSocket();
     const s = getSocket();
 
     const onConnect = (): void => {
@@ -47,7 +54,7 @@ export const useSocket = (): UseSocketReturn => {
       s.off("connect_error", onConnectError);
       s.disconnect();
     };
-  }, []);
+  }, [isAuthenticated, token]);
 
   return { socket, status };
 };
