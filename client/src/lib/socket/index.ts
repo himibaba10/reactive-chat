@@ -1,11 +1,12 @@
-import { io, Socket } from "socket.io-client";
 import { getMemoryToken } from "@/context/AuthContext";
+import { io, Socket } from "socket.io-client";
 
 export interface ServerToClientEvents {
   "message:received": (data: MessagePayload) => void;
   "room:joined": (data: { roomId: string; socketId: string; name: string }) => void;
   "room:left": (data: { roomId: string; socketId: string; name: string }) => void;
   "history:loaded": (messages: MessagePayload[]) => void;
+  "history:error": (message: string) => void;
   "typing:update": (data: TypingPayload) => void;
 }
 

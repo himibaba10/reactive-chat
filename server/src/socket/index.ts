@@ -6,6 +6,7 @@ export interface ServerToClientEvents {
   "room:joined": (data: { roomId: string; socketId: string; name: string }) => void;
   "room:left": (data: { roomId: string; socketId: string; name: string }) => void;
   "history:loaded": (messages: MessagePayload[]) => void;
+  "history:error": (message: string) => void;
   "typing:update": (data: TypingPayload) => void;
 }
 
@@ -36,7 +37,6 @@ export const registerSocketHandlers = (
   io: Server<ClientToServerEvents, ServerToClientEvents>
 ): void => {
   io.on("connection", (socket: Socket<ClientToServerEvents, ServerToClientEvents>) => {
-    // socket.data.user is guaranteed here — middleware already verified it
     const { userId, name } = socket.data.user;
     console.log(`Socket connected: ${socket.id} (${name})`);
 
@@ -51,6 +51,8 @@ export const registerSocketHandlers = (
         socket.emit("history:loaded", history as MessagePayload[]);
       } catch (err) {
         console.error("Failed to load history:", err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        socket.emit("history:error", errMsg);
         socket.emit("history:loaded", []);
       }
     });

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { getSocket, MessagePayload } from "@/lib/socket";
 import { useAuth } from "@/context/AuthContext";
+import { getSocket, MessagePayload } from "@/lib/socket";
+import { useCallback, useEffect, useState } from "react";
 
 interface UseRoomReturn {
   messages: MessagePayload[];
@@ -11,12 +11,14 @@ interface UseRoomReturn {
   sendMessage: (roomId: string, message: string) => void;
   currentRoom: string | null;
   isLoadingHistory: boolean;
+  historyError: string | null;
 }
 
 export const useRoom = (): UseRoomReturn => {
   const [messages, setMessages] = useState<MessagePayload[]>([]);
   const [currentRoom, setCurrentRoom] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -34,18 +36,27 @@ export const useRoom = (): UseRoomReturn => {
     const onHistoryLoaded = (history: MessagePayload[]): void => {
       setMessages(history);
       setIsLoadingHistory(false);
+      setHistoryError(null);
+    };
+
+    const onHistoryError = (errMsg: string): void => {
+      setHistoryError(errMsg);
+      setMessages([]);
+      setIsLoadingHistory(false);
     };
 
     socket.on("message:received", onMessageReceived);
     socket.on("room:joined", onRoomJoined);
     socket.on("room:left", onRoomLeft);
     socket.on("history:loaded", onHistoryLoaded);
+    socket.on("history:error", onHistoryError);
 
     return () => {
       socket.off("message:received", onMessageReceived);
       socket.off("room:joined", onRoomJoined);
       socket.off("room:left", onRoomLeft);
       socket.off("history:loaded", onHistoryLoaded);
+      socket.off("history:error", onHistoryError);
     };
   }, []);
 
@@ -53,6 +64,7 @@ export const useRoom = (): UseRoomReturn => {
     const socket = getSocket();
     setMessages([]);
     setIsLoadingHistory(true);
+    setHistoryError(null);
     socket.emit("room:join", roomId);
     setCurrentRoom(roomId);
   }, []);
@@ -62,6 +74,7 @@ export const useRoom = (): UseRoomReturn => {
     socket.emit("room:leave", roomId);
     setCurrentRoom(null);
     setMessages([]);
+    setHistoryError(null);
   }, []);
 
   const sendMessage = useCallback(
@@ -82,5 +95,13 @@ export const useRoom = (): UseRoomReturn => {
     [user]
   );
 
-  return { messages, joinRoom, leaveRoom, sendMessage, currentRoom, isLoadingHistory };
+  return {
+    messages,
+    joinRoom,
+    leaveRoom,
+    sendMessage,
+    currentRoom,
+    isLoadingHistory,
+    historyError,
+  };
 };

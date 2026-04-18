@@ -1,5 +1,5 @@
-import { Schema, model, Document } from "mongoose";
 import bcrypt from "bcryptjs";
+import { Document, Schema, model } from "mongoose";
 
 export interface IUser extends Document {
   name: string;
@@ -18,12 +18,11 @@ const UserSchema = new Schema<IUser>(
 );
 
 // Hash password BEFORE saving — never store plaintext
-// This is a Mongoose pre-save hook
-UserSchema.pre("save", async function (next) {
+// This is a Mongoose pre-save hook. Use async/Promise style instead of `next`.
+UserSchema.pre("save", async function (this: IUser) {
   // Only hash if password was modified (not on every save)
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("password")) return;
   this.password = await bcrypt.hash(this.password, 12);
-  next();
 });
 
 // Instance method — compare candidate password against stored hash

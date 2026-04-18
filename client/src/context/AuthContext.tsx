@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode, useCallback } from "react";
+import { createContext, ReactNode, useCallback, useContext, useState } from "react";
 
 interface User {
   id: string;
@@ -18,11 +18,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// Token stored in MEMORY (module-level variable), not localStorage.
-// Why? localStorage is accessible via JS — XSS attack can steal it.
-// Memory storage dies on page refresh — tradeoff is user logs in again.
-// For production you'd use httpOnly cookies (server sets it, JS can't read it).
-// For learning purposes, memory is fine and teaches the concept cleanly.
 let memoryToken: string | null = null;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {

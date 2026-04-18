@@ -1,5 +1,5 @@
 import { Socket } from "socket.io";
-import { verifyToken, JwtPayload } from "../config/jwt";
+import { JwtPayload, verifyToken } from "../config/jwt";
 import { ClientToServerEvents, ServerToClientEvents } from "../socket";
 
 // Extend Socket's data property so TypeScript knows what's on socket.data
@@ -24,9 +24,8 @@ export const socketAuthMiddleware = (socket: AuthSocket, next: (err?: Error) => 
 
   try {
     const payload = verifyToken(token);
-    // Attach user to socket.data — available in every event handler
     socket.data.user = payload;
-    next(); // allow connection
+    next();
   } catch {
     next(new Error("Invalid or expired token"));
   }

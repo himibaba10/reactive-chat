@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { User } from "../models/User";
 import { signToken } from "../config/jwt";
+import { User } from "../models/User";
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -11,7 +11,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       res.status(409).json({ message: "Email already in use" });
       return;
     }
-
     // Password gets hashed in the pre-save hook — we just pass plaintext here
     const user = await User.create({ name, email, password });
 

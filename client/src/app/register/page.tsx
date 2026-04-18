@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { SubmitEvent, useState } from "react";
 
 export default function RegisterPage() {
   const { login } = useAuth();
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [formData, setFormData] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
+  const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -20,7 +20,7 @@ export default function RegisterPage() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(formData),
       });
 
       const data = await res.json();
@@ -29,7 +29,6 @@ export default function RegisterPage() {
         return;
       }
 
-      // Auto-login after register
       login(data.token, data.user);
       router.push("/");
     } catch {
@@ -47,24 +46,24 @@ export default function RegisterPage() {
         <input
           className="border rounded px-3 py-2 text-sm"
           placeholder="Name"
-          value={form.name}
-          onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+          value={formData.name}
+          onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
           required
         />
         <input
           className="border rounded px-3 py-2 text-sm"
           type="email"
           placeholder="Email"
-          value={form.email}
-          onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+          value={formData.email}
+          onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
           required
         />
         <input
           className="border rounded px-3 py-2 text-sm"
           type="password"
           placeholder="Password (min 6 chars)"
-          value={form.password}
-          onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+          value={formData.password}
+          onChange={(e) => setFormData((p) => ({ ...p, password: e.target.value }))}
           required
         />
         <button
